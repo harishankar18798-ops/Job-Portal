@@ -5,11 +5,12 @@ import {
   deleteJob,
   updateJob,
   generateJD,
+  updateJobStatus
 } from "../controllers/jobControllers";
 import { verifyToken, authorize } from "../middleware/auth";
-
+ 
 const router = Router();
-
+ 
 /**
  * @swagger
  * /api/createjob:
@@ -56,7 +57,7 @@ const router = Router();
  *         description: Server error
  */
 router.post("/createjob", verifyToken, authorize(["admin"]), createJob);
-
+ 
 /**
  * @swagger
  * /api/getjob:
@@ -70,7 +71,7 @@ router.post("/createjob", verifyToken, authorize(["admin"]), createJob);
  *         description: Server error
  */
 router.get("/getjob", getAllJobs);
-
+ 
 /**
  * @swagger
  * /api/deletejob/{id}:
@@ -97,7 +98,7 @@ router.get("/getjob", getAllJobs);
  *         description: Server error
  */
 router.delete("/deletejob/:id", verifyToken, authorize(["admin"]), deleteJob);
-
+ 
 /**
  * @swagger
  * /api/updatejob/{id}:
@@ -147,7 +148,7 @@ router.delete("/deletejob/:id", verifyToken, authorize(["admin"]), deleteJob);
  *         description: Server error
  */
 router.put("/updatejob/:id", verifyToken, authorize(["admin"]), updateJob);
-
+ 
 /**
  * @swagger
  * /api/ai/generate-jd:
@@ -190,5 +191,48 @@ router.put("/updatejob/:id", verifyToken, authorize(["admin"]), updateJob);
  *         description: Server error
  */
 router.post("/ai/generate-jd", verifyToken, authorize(["admin"]), generateJD);
-
+ 
+/**
+ * @swagger
+ * /api/job/{id}/status:
+ *   patch:
+ *     summary: Update job status (admin only)
+ *     tags: [Jobs]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Job ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Posted, Draft, Closed]
+ *     responses:
+ *       200:
+ *         description: Job status updated successfully
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - admin only
+ *       404:
+ *         description: Job not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/job/:id/status",verifyToken,authorize(["admin"]),updateJobStatus
+);
 export default router;

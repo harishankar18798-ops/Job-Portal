@@ -1,124 +1,179 @@
 import { Request, Response } from "express";
 import { JobService } from "../service/jobService";
-
+ 
 export async function createJob(req: Request, res: Response) {
   try {
     const {
       title,
-      description,
+      roleOverview,
       deptId,
       minExperience,
       maxExperience,
-      skillsRequired,
+      keyRequirements,
+      coreRequirements,
       employmentTypeId,
-      educationRequired,
     } = req.body;
-
-    const newJob = await JobService.createJob(
+ 
+    if (!title || !roleOverview || !deptId) {
+      return res.status(400).json({
+        message: "title, roleOverview and deptId are required",
+      });
+    }
+ 
+    const job = await JobService.createJob(
       title,
-      description,
+      roleOverview,
       Number(deptId),
-      minExperience ? Number(minExperience) : undefined,
+       minExperience ? Number(minExperience) : undefined,
       maxExperience ? Number(maxExperience) : undefined,
-      skillsRequired,
-      employmentTypeId ? Number(employmentTypeId) : undefined,
-      educationRequired
+      keyRequirements,
+      coreRequirements,
+      employmentTypeId ? Number(employmentTypeId) : undefined
     );
-
-    res.status(201).json(newJob);
+ 
+    return res.status(201).json(job);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to create Job" });
+    console.error("Create job error:", error);
+    return res.status(500).json({ message: "Failed to create job" });
   }
 }
-
+ 
 export async function getAllJobs(req: Request, res: Response) {
   try {
     const jobs = await JobService.getAllJobs();
-    res.status(200).json(jobs);
+    return res.json(jobs);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to retrieve Jobs" });
+    console.error("Get jobs error:", error);
+    return res.status(500).json({ message: "Failed to fetch jobs" });
   }
 }
-
+ 
 export async function deleteJob(req: Request, res: Response) {
   try {
-    const { id } = req.params;
-    const numericId = Number(id);
-
-    await JobService.deleteJob(numericId);
-
-    res.status(200).json({
-      message: "Job deleted successfully",
-    });
+    const id = Number(req.params.id);
+ 
+    if (!id) {
+      return res.status(400).json({ message: "Invalid job id" });
+    }
+ 
+    const deleted = await JobService.deleteJob(id);
+ 
+    if (!deleted) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+ 
+    return res.json({ message: "Job deleted successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to delete Job" });
+    console.error("Delete job error:", error);
+    return res.status(500).json({ message: "Failed to delete job" });
   }
 }
-
+ 
 export async function updateJob(req: Request, res: Response) {
   try {
-    const { id } = req.params;
-
+    const id = Number(req.params.id);
+ 
     const {
       title,
-      description,
+      roleOverview,
       deptId,
       minExperience,
       maxExperience,
-      skillsRequired,
+      keyRequirements,
+      coreRequirements,
       employmentTypeId,
-      educationRequired,
+      status,
     } = req.body;
-
-    const numericId = Number(id);
-
-    const job = await JobService.updateJob(
-      numericId,
+ 
+    if (!id || !title || !roleOverview || !deptId) {
+      return res.status(400).json({
+        message: "id, title, roleOverview and deptId are required",
+      });
+    }
+ 
+    const updated = await JobService.updateJob(
+      id,
       title,
-      description,
+      roleOverview,
       Number(deptId),
-      minExperience ? Number(minExperience) : undefined,
+       minExperience ? Number(minExperience) : undefined,
       maxExperience ? Number(maxExperience) : undefined,
-      skillsRequired,
+      keyRequirements,
+      coreRequirements,
       employmentTypeId ? Number(employmentTypeId) : undefined,
-      educationRequired
+      status
     );
-
-    res.status(200).json(job);
+ 
+    if (!updated) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+ 
+    return res.json(updated);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to update Job" });
+    console.error("Update job error:", error);
+    return res.status(500).json({ message: "Failed to update job" });
   }
 }
-
+ 
 export async function generateJD(req: Request, res: Response) {
   try {
     const {
       title,
-      skillsRequired,
+      keyRequirements,
       minExperience,
       maxExperience,
       employmentTypeId,
-      educationRequired,
-      description,
+      roleOverview,
+      coreRequirements,
     } = req.body;
-
+ 
+    if (!title) {
+      return res.status(400).json({ message: "Title is required" });
+    }
+ 
     const jd = await JobService.generateJD(
       title,
-      skillsRequired,
-      minExperience ? Number(minExperience) : undefined,
+      keyRequirements,
+       minExperience ? Number(minExperience) : undefined,
       maxExperience ? Number(maxExperience) : undefined,
       employmentTypeId ? Number(employmentTypeId) : undefined,
-      educationRequired,
-      description
+      roleOverview,
+      coreRequirements
     );
-
-    res.status(200).json({ jd });
+ 
+    return res.status(200).json({ jd });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to generate JD" });
+    return res.status(500).json({ error: "Failed to generate JD" });
+  }
+}
+ 
+export async function updateJobStatus(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body;
+ 
+    if (!id || !status) {
+      return res.status(400).json({
+        message: "id and status are required",
+      });
+    }
+ 
+    if (!["Posted", "Draft", "Closed"].includes(status)) {
+      return res.status(400).json({
+        message: "Invalid status value",
+      });
+    }
+ 
+    const updated = await JobService.updateJobStatus(id, status);
+ 
+    if (!updated) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+ 
+    return res.json(updated);
+  } catch (error) {
+    console.error("Update job status error:", error);
+    return res.status(500).json({ message: "Failed to update job status" });
   }
 }

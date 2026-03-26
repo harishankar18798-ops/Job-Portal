@@ -12,6 +12,8 @@ import {
   Box,
   Button,
   IconButton,
+  MenuItem,
+  Select,
   Typography,
   Paper,
   TextField,
@@ -19,29 +21,32 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-
+ 
+type JobStatus = "Posted" | "Draft" | "Closed";
+ 
 type JobRow = {
   id: number;
   title: string;
-  description: string;
+  roleOverview: string;
   deptId: number;
   employmentTypeId?: number;
   minExperience?: number;
   maxExperience?: number;
-  skillsRequired?: string;
-  educationRequired?: string;
+  keyRequirements?: string;
+  coreRequirements?: string;
+  status?: JobStatus;
   dept?: { id: number; name: string };
   employmentType?: { id: number; name: string };
 };
-
+ 
 const paginationModel = { page: 0, pageSize: 10 };
-
+ 
 const NAVY = "#1a2e5a";
 const NAVY_TEXT = "#0c1a3a";
 const ORANGE = "#f97316";
 const BORDER_COLOR = "#d5dbe6";
 const BG = "#f8f9fc";
-
+ 
 const searchFieldSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: "8px",
@@ -63,19 +68,92 @@ const searchFieldSx = {
     color: "#94a3b8",
   },
 };
-
+ 
+// ── Status config ──────────────────────────────────────────────────────────────
+const STATUS_OPTIONS: JobStatus[] = ["Posted", "Draft", "Closed"];
+ 
+const STATUS_STYLES: Record<JobStatus, { color: string; bg: string; border: string }> = {
+  Posted: { color: "#15803d", bg: "#dcfce7", border: "#86efac" },
+  Draft:     { color: "#92400e", bg: "#fef3c7", border: "#fcd34d" },
+  Closed:    { color: "#991b1b", bg: "#fee2e2", border: "#fca5a5" },
+};
+ 
+// ── Inline status selector cell ────────────────────────────────────────────────
+function StatusCell({
+  row,
+  onStatusChange,
+}: {
+  row: JobRow;
+  onStatusChange: (id: number, status: JobStatus) => void;
+}) {
+  const status: JobStatus = (row.status as JobStatus) ?? "Draft";
+  const style = STATUS_STYLES[status];
+ 
+  return (
+    <Select
+      value={status}
+      size="small"
+      onChange={(e) => onStatusChange(row.id, e.target.value as JobStatus)}
+      onClick={(e) => e.stopPropagation()}
+      sx={{
+        height: 26,
+        fontSize: 12,
+        width: 110,
+        fontWeight: 700,
+        textTransform: "capitalize",
+        background: style.bg,
+        color: style.color,
+        border: `1px solid ${style.border}`,
+        borderRadius: "16px",
+ 
+        "& .MuiOutlinedInput-notchedOutline": {
+          border: "none",
+        },
+ 
+        "& .MuiSelect-select": {
+          py: "2px",
+          pl: "10px",
+          pr: "24px !important",
+        },
+ 
+        "& .MuiSelect-icon": {
+          color: style.color,
+          fontSize: 16,
+          right: 4,
+        },
+      }}
+    >
+      {STATUS_OPTIONS.map((s) => {
+        const sStyle = STATUS_STYLES[s];
+        return (
+          <MenuItem
+            key={s}
+            value={s}
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: sStyle.color,
+            }}
+          >
+            {s}
+          </MenuItem>
+        );
+      })}
+    </Select>
+  );
+}
+ 
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function JobTable() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
+ 
   const [rows, setRows] = useState<JobRow[]>([]);
-
   const [searchTitle, setSearchTitle] = useState("");
   const [searchDept, setSearchDept] = useState("");
   const [searchEmpType, setSearchEmpType] = useState("");
-
-  // On mobile, hide Description and Employment Type columns to save space
+ 
   const columns: GridColDef[] = [
     {
       field: "sno",
@@ -106,14 +184,24 @@ export default function JobTable() {
       headerName: "Department",
       flex: 0.8,
       minWidth: 90,
-      renderCell: (params) => params.row.dept?.name,
+      renderCell: (params) => params.row.dept?.name ?? "—",
     },
     {
       field: "employmentType",
       headerName: "Emp. Type",
       flex: 0.8,
       minWidth: 90,
-      renderCell: (params) => params.row.employmentType?.name,
+      renderCell: (params) => params.row.employmentType?.name ?? "—",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      flex: 0.8,
+      minWidth: 120,
+      sortable: false,
+      renderCell: (params) => (
+        <StatusCell row={params.row} onStatusChange={handleStatusChange} />
+      ),
     },
     {
       field: "actions",
@@ -131,7 +219,8 @@ export default function JobTable() {
               bgcolor: "#eff6ff",
               border: "1px solid #bfdbfe",
               borderRadius: "6px",
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               "&:hover": { bgcolor: "#dbeafe" },
             }}
           >
@@ -145,7 +234,8 @@ export default function JobTable() {
               bgcolor: "#fef2f2",
               border: "1px solid #fecaca",
               borderRadius: "6px",
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               "&:hover": { bgcolor: "#fee2e2" },
             }}
           >
@@ -155,13 +245,11 @@ export default function JobTable() {
       ),
     },
   ];
-
-
-
+ 
   useEffect(() => {
     fetchJobs();
   }, []);
-
+ 
   const fetchJobs = async () => {
     try {
       const response = await api.get("/getjob");
@@ -170,7 +258,7 @@ export default function JobTable() {
       console.error("Error fetching jobs:", error);
     }
   };
-
+ 
   const handleDelete = async (id: number) => {
     try {
       await api.delete(`/deletejob/${id}`);
@@ -181,13 +269,26 @@ export default function JobTable() {
       toast.error("Failed to delete job...");
     }
   };
-
+ 
+    const handleStatusChange = async (id: number, status: JobStatus) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status } : r))
+    );
+    try {
+      await api.patch(`/job/${id}/status`, { status });
+      toast.success("Job status updated.");
+    } catch {
+      toast.error("Failed to update status.");
+      fetchJobs();
+    }
+  };
+ 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
       const title = row.title?.toLowerCase() ?? "";
       const dept = row.dept?.name?.toLowerCase() ?? "";
       const empType = row.employmentType?.name?.toLowerCase() ?? "";
-
+ 
       return (
         title.includes(searchTitle.toLowerCase()) &&
         dept.includes(searchDept.toLowerCase()) &&
@@ -195,14 +296,13 @@ export default function JobTable() {
       );
     });
   }, [rows, searchTitle, searchDept, searchEmpType]);
-
+ 
   return (
     <Box
       sx={{
         display: "flex",
         flexDirection: "column",
         background: BG,
-        // Responsive padding so the table doesn't touch screen edges on mobile
         px: { xs: 1, sm: 2, md: 0 },
       }}
     >
@@ -262,14 +362,13 @@ export default function JobTable() {
               {isMobile ? "Add" : "Add Job"}
             </Button>
           </Box>
-
+ 
           {/* Search filters row */}
           <Box
             sx={{
               px: { xs: 1.5, sm: 3 },
               py: 1.5,
               display: "grid",
-              // Stack to 1 column on mobile, 2 on tablet, 3 on desktop
               gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
               gap: 1.5,
               flexShrink: 0,
@@ -320,70 +419,79 @@ export default function JobTable() {
               }}
             />
           </Box>
-
+ 
           {/* Scrollable area on mobile */}
           <Box sx={{ overflowX: { xs: "auto", sm: "hidden" } }}>
             <Box sx={{ minWidth: { xs: 600, sm: "100%" } }}>
-            <DataGrid
-              autoHeight
-              rows={filteredRows}
-              columns={columns}
-              initialState={{ pagination: { paginationModel } }}
-              pageSizeOptions={[5, 10, 20]}
-              disableColumnMenu
-              disableRowSelectionOnClick
-              slots={{
-                noRowsOverlay: () => (
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                    <Typography sx={{ color: "#94a3b8", fontSize: 14, textAlign: "center", px: 2 }}>
-                      No jobs found. Create your first job posting.
-                    </Typography>
-                  </Box>
-                ),
-              }}
-              sx={{
-                width: "100%",
-                border: 0,
-                "& .MuiDataGrid-columnHeaders": {
-                  background: NAVY,
-                  borderRadius: 0,
-                },
-                "& .MuiDataGrid-columnHeader": {
-                  background: NAVY,
-                  "&:focus, &:focus-within": { outline: "none" },
-                },
-                "& .MuiDataGrid-columnHeaderTitle": {
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: { xs: 12, sm: 14 },
-                  letterSpacing: 0.3,
-                },
-                "& .MuiDataGrid-sortIcon": { color: "#fff" },
-                "& .MuiDataGrid-menuIconButton": { color: "#fff" },
-                "& .MuiDataGrid-columnSeparator": { display: "none" },
-                "& .MuiDataGrid-virtualScroller": {
-                  overflowX: "hidden !important",
-                  overflowY: "auto",
-                },
-                "& .MuiDataGrid-scrollbar--horizontal": { display: "none !important" },
-                "& .MuiDataGrid-scrollbar--vertical": { display: "none !important" },
-                "& .MuiDataGrid-row": { "&:hover": { background: "#f8fafc" } },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "1px solid #f1f5f9",
-                  color: "#334155",
-                  fontSize: { xs: 12, sm: 13 },
-                  display: "flex",
-                  alignItems: "center",
-                },
-                "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${BORDER_COLOR}` },
-                "& .MuiNativeSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
-                "& .MuiSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
-                "& .MuiTablePagination-select:focus": { backgroundColor: "#fff3e6 !important" },
-                "& .MuiIconButton-root:hover": { backgroundColor: "#fff3e6" },
-                // Slightly smaller pagination text on mobile
-                "& .MuiTablePagination-root": { fontSize: { xs: 12, sm: 14 } },
-              }}
-            />
+              <DataGrid
+                autoHeight
+                rows={filteredRows}
+                columns={columns}
+                initialState={{ pagination: { paginationModel } }}
+                pageSizeOptions={[5, 10, 20]}
+                disableColumnMenu
+                disableRowSelectionOnClick
+                slots={{
+                  noRowsOverlay: () => (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                      }}
+                    >
+                      <Typography
+                        sx={{ color: "#94a3b8", fontSize: 14, textAlign: "center", px: 2 }}
+                      >
+                        No jobs found. Create your first job posting.
+                      </Typography>
+                    </Box>
+                  ),
+                }}
+                sx={{
+                  width: "100%",
+                  border: 0,
+                  "& .MuiDataGrid-columnHeaders": { background: NAVY, borderRadius: 0 },
+                  "& .MuiDataGrid-columnHeader": {
+                    background: NAVY,
+                    "&:focus, &:focus-within": { outline: "none" },
+                  },
+                  "& .MuiDataGrid-columnHeaderTitle": {
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: { xs: 12, sm: 14 },
+                    letterSpacing: 0.3,
+                  },
+                  "& .MuiDataGrid-sortIcon": { color: "#fff" },
+                  "& .MuiDataGrid-menuIconButton": { color: "#fff" },
+                  "& .MuiDataGrid-columnSeparator": { display: "none" },
+                  "& .MuiDataGrid-virtualScroller": {
+                    overflowX: "hidden !important",
+                    overflowY: "auto",
+                  },
+                  "& .MuiDataGrid-scrollbar--horizontal": { display: "none !important" },
+                  "& .MuiDataGrid-scrollbar--vertical": { display: "none !important" },
+                  "& .MuiDataGrid-row": { "&:hover": { background: "#f8fafc" } },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "1px solid #f1f5f9",
+                    color: "#334155",
+                    fontSize: { xs: 12, sm: 13 },
+                    display: "flex",
+                    alignItems: "center",
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: `1px solid ${BORDER_COLOR}`,
+                  },
+                  "& .MuiNativeSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
+                  "& .MuiSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
+                  "& .MuiTablePagination-select:focus": {
+                    backgroundColor: "#fff3e6 !important",
+                  },
+                  "& .MuiIconButton-root:hover": { backgroundColor: "#fff3e6" },
+                  "& .MuiTablePagination-root": { fontSize: { xs: 12, sm: 14 } },
+                }}
+              />
             </Box>
           </Box>
         </Paper>
@@ -391,3 +499,4 @@ export default function JobTable() {
     </Box>
   );
 }
+ 
