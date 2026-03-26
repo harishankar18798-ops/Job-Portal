@@ -102,6 +102,7 @@ export default function AppLayout() {
       { text: "Home", path: "/home" },
       { text: "View Jobs", path: "/jobapply" },
       { text: "My Profile", path: "/profile" },
+      { text: "My Applications", path: "/myapplications" },
     ],
     admin: [
       { text: "Home", path: "/home" },

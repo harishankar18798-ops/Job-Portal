@@ -41,19 +41,23 @@ const ORANGE = "#f97316";
 const PRIMARY_LIGHT = "#eef1f8";
 const RECAPTCHA_SITE_KEY = "6LeUJYwsAAAAAOqg-cuXi0QMm9EWwjvbtaAxsAYW";
 
-// ── Zod Schema ───────────────────────────────────────────────────────────────
-const schema = z.object({
+// ── Zod Schemas ───────────────────────────────────────────────────────────────
+const forgotSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Enter valid email"),
+  password: z.string().min(6, "Minimum 6 characters"),
+  otp: z.string().optional(),
+});
+
+const signupSchema = z.object({
   name: z.string().min(1, "Full name is required"),
-  phone: z
-    .string()
-    .min(1, "Phone number is required")
-    .regex(/^[0-9]{10}$/, "Enter a valid 10-digit phone number"),
+  phone: z.string().min(1, "Phone number is required").regex(/^[0-9]{10}$/, "Enter a valid 10-digit phone number"),
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   otp: z.string().optional(),
 });
 
-type FormData = z.infer<typeof schema>;
+type ForgotFormData = z.infer<typeof forgotSchema>;
+type SignupFormData = z.infer<typeof signupSchema>;
 
 type ParsedCandidateData = {
   name?: string;
@@ -98,8 +102,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 width: 24, height: 24, borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 bgcolor: i < currentStep ? ORANGE : i === currentStep ? PRIMARY : "#e2e8f0",
-                mb: 0.5,
-                transition: "all 0.3s ease",
+                mb: 0.5, transition: "all 0.3s ease",
                 boxShadow: i === currentStep ? `0 0 0 4px ${PRIMARY_LIGHT}` : "none",
               }}
             >
@@ -111,28 +114,16 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
                 </Typography>
               )}
             </Box>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: i <= currentStep ? 700 : 400,
-                color: i <= currentStep ? PRIMARY : "#94a3b8",
-                transition: "all 0.3s ease",
-                letterSpacing: 0.3,
-              }}
-            >
+            <Typography sx={{ fontSize: 10, fontWeight: i <= currentStep ? 700 : 400, color: i <= currentStep ? PRIMARY : "#94a3b8", transition: "all 0.3s ease", letterSpacing: 0.3 }}>
               {label}
             </Typography>
           </Box>
         ))}
       </Box>
       <LinearProgress
-        variant="determinate"
-        value={progress}
+        variant="determinate" value={progress}
         sx={{
-          height: 3,
-          borderRadius: 2,
-          bgcolor: "#e2e8f0",
-          mt: 0.5,
+          height: 3, borderRadius: 2, bgcolor: "#e2e8f0", mt: 0.5,
           "& .MuiLinearProgress-bar": {
             background: `linear-gradient(90deg, ${PRIMARY}, ${ORANGE})`,
             borderRadius: 2,
@@ -145,86 +136,25 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 }
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
-function SectionBox({
-  label,
-  stepNumber,
-  done,
-  children,
-}: {
-  label: string;
-  stepNumber: number;
-  done?: boolean;
-  children: React.ReactNode;
-}) {
+function SectionBox({ label, stepNumber, done, children }: { label: string; stepNumber: number; done?: boolean; children: React.ReactNode; }) {
   return (
-    <Box
-      sx={{
-        border: `1.5px solid ${done ? "#bbf7d0" : "#e8edf5"}`,
-        borderRadius: "14px",
-        overflow: "hidden",
-        transition: "all 0.3s ease",
-        boxShadow: done ? "none" : "0 2px 8px rgba(26,46,90,0.04)",
-      }}
-    >
-      {/* Section header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2.5,
-          py: 1.5,
-          bgcolor: done ? "#f0fdf4" : "#f8fafc",
-          borderBottom: done ? "none" : "1px solid #e8edf5",
-        }}
-      >
+    <Box sx={{ border: `1.5px solid ${done ? "#bbf7d0" : "#e8edf5"}`, borderRadius: "14px", overflow: "hidden", transition: "all 0.3s ease", boxShadow: done ? "none" : "0 2px 8px rgba(26,46,90,0.04)" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2.5, py: 1.5, bgcolor: done ? "#f0fdf4" : "#f8fafc", borderBottom: done ? "none" : "1px solid #e8edf5" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
-          <Box
-            sx={{
-              width: 22, height: 22, borderRadius: "50%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              bgcolor: done ? "#16a34a" : PRIMARY,
-              flexShrink: 0,
-            }}
-          >
-            {done ? (
-              <CheckCircleOutlineIcon sx={{ fontSize: 13, color: "#fff" }} />
-            ) : (
-              <Typography sx={{ fontSize: 10, fontWeight: 800, color: "#fff" }}>
-                {stepNumber}
-              </Typography>
-            )}
+          <Box sx={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: done ? "#16a34a" : PRIMARY, flexShrink: 0 }}>
+            {done ? <CheckCircleOutlineIcon sx={{ fontSize: 13, color: "#fff" }} /> : <Typography sx={{ fontSize: 10, fontWeight: 800, color: "#fff" }}>{stepNumber}</Typography>}
           </Box>
-          <Typography
-            sx={{
-              fontSize: 12,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              color: done ? "#16a34a" : PRIMARY,
-            }}
-          >
+          <Typography sx={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: done ? "#16a34a" : PRIMARY }}>
             {label}
           </Typography>
         </Box>
-        {done && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Typography sx={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Completed</Typography>
-          </Box>
-        )}
+        {done && <Typography sx={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>Completed</Typography>}
       </Box>
-
-      {/* Section content */}
-      {!done && (
-        <Box sx={{ p: 2.5, bgcolor: "#fff" }}>
-          {children}
-        </Box>
-      )}
+      {!done && <Box sx={{ p: 2.5, bgcolor: "#fff" }}>{children}</Box>}
     </Box>
   );
 }
 
-// ── Field label ───────────────────────────────────────────────────────────────
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <Typography sx={{ mb: 0.6, fontWeight: 600, fontSize: 13, color: "#374151", letterSpacing: 0.1 }}>
@@ -233,20 +163,226 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function SignUp() {
+// ════════════════════════════════════════════════════════
+//  FORGOT PASSWORD COMPONENT
+// ════════════════════════════════════════════════════════
+function ForgotPassword() {
   const {
-    register,
-    handleSubmit,
-    watch,
+    register, handleSubmit, watch,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<ForgotFormData>({ resolver: zodResolver(forgotSchema) });
 
   const navigate = useNavigate();
+  const email = watch("email");
+
+  const [showVerifyBtn, setShowVerifyBtn] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  // ── CAPTCHA ─────────────────────────────────────────────
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = "auto";
+    return () => { document.body.style.overflow = "hidden"; };
+  }, []);
+
+  const handlePasswordFocus = () => {
+    if (email) setShowVerifyBtn(true);
+  };
+
+  const sendOtp = async () => {
+    if (!captchaToken) { toast.error("Please complete the CAPTCHA first"); return; }
+    try {
+      await axios.post("http://localhost:5000/api/send-otp", { email, captchaToken });
+      setShowOtpInput(true);
+      toast.success("OTP sent successfully");
+    } catch {
+      toast.error("Failed to send OTP");
+    }
+  };
+
+  const verifyOtp = async () => {
+    try {
+      const otp = watch("otp");
+      await axios.post("http://localhost:5000/api/verify-otp", { email, otp });
+      setVerified(true);
+    } catch {
+      toast.error("Invalid OTP");
+    }
+  };
+
+  const onSubmit = async (data: ForgotFormData) => {
+    try {
+      await axios.post("http://localhost:5000/api/signup", {
+        email: data.email,
+        password: data.password,
+      });
+      toast.success("Password updated successfully");
+      navigate("/");
+    } catch {
+      toast.error("Something went wrong");
+    }
+  };
+
+  return (
+    <Box sx={{ minHeight: "100vh", display: "flex" }}>
+      <Toaster position="top-right" richColors />
+
+      {/* LEFT PANEL */}
+      <Box sx={{ display: { xs: "none", lg: "flex" }, width: "50%", flexDirection: "column", alignItems: "center", justifyContent: "center", p: 6, background: "#1a2e5a", color: "#fff" }}>
+        <Box textAlign="center">
+          <Box sx={{ width: 80, height: 80, borderRadius: 2, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", mb: 4, mx: "auto" }}>
+            <WorkOutlineRoundedIcon sx={{ fontSize: 40 }} />
+          </Box>
+          <Typography variant="h3" mb={2}>TalentHub</Typography>
+          <Typography sx={{ opacity: 0.7, maxWidth: 400 }}>
+            Recover access to your account quickly and securely.
+          </Typography>
+        </Box>
+      </Box>
+
+      {/* RIGHT PANEL */}
+      <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", p: 2, background: "#f8f9fc" }}>
+        <Box sx={{ width: "100%", maxWidth: 450 }}>
+          <Card elevation={0} sx={{ borderRadius: 3, boxShadow: "0 6px 18px rgba(15,23,42,0.06)" }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box textAlign="center" mb={3}>
+                <Typography variant="h5" sx={{ color: "#0c1a3a" }}>Reset Password</Typography>
+                <Typography variant="body2" sx={{ color: "#4a5568" }}>Enter your email and new password</Typography>
+              </Box>
+
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <Stack spacing={2.5}>
+
+                  {/* EMAIL */}
+                  <Box>
+                    <Typography sx={{ mb: 0.6, fontWeight: 600 }}>Email</Typography>
+                    <TextField
+                      fullWidth placeholder="you@example.com"
+                      {...register("email")}
+                      error={!!errors.email} helperText={errors.email?.message}
+                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><EmailOutlinedIcon /></InputAdornment>, sx: { bgcolor: "#fff", borderRadius: 2, height: 48 } } }}
+                    />
+                  </Box>
+
+                  {/* PASSWORD */}
+                  <Box>
+                    <Typography sx={{ mb: 0.6, fontWeight: 600 }}>New Password</Typography>
+                    <TextField
+                      type="password" fullWidth placeholder="Create a strong password"
+                      {...register("password")}
+                      onFocus={handlePasswordFocus}
+                      error={!!errors.password} helperText={errors.password?.message}
+                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><LockOutlinedIcon /></InputAdornment>, sx: { bgcolor: "#fff", borderRadius: 2, height: 48 } } }}
+                    />
+                  </Box>
+
+                  {/* reCAPTCHA */}
+                  {showVerifyBtn && !verified && (
+                    <Box
+                      sx={{
+                        border: "1px solid #e2e8f0", borderRadius: 2,
+                        p: 1.5, bgcolor: "#f8f9fc",
+                        display: "flex", justifyContent: "center",
+                        overflow: "visible", position: "relative", zIndex: 9999,
+                      }}
+                    >
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={RECAPTCHA_SITE_KEY}
+                        onChange={(token) => setCaptchaToken(token)}
+                        onExpired={() => setCaptchaToken(null)}
+                      />
+                    </Box>
+                  )}
+
+                  {/* VERIFY BUTTON */}
+                  {showVerifyBtn && !verified && (
+                    <Button
+                      variant="outlined" onClick={sendOtp}
+                      disabled={!captchaToken}
+                      startIcon={<VerifiedUserOutlinedIcon />}
+                      sx={{
+                        borderRadius: 2, color: "#f97316", borderColor: "#f97316", fontWeight: 600,
+                        "&:disabled": { borderColor: "#e2e8f0", color: "#94a3b8" },
+                      }}
+                    >
+                      Verify Email
+                    </Button>
+                  )}
+
+                  {/* OTP */}
+                  {showOtpInput && !verified && (
+                    <>
+                      <Box>
+                        <Typography sx={{ mb: 0.6, fontWeight: 600 }}>Enter OTP</Typography>
+                        <TextField
+                          fullWidth {...register("otp")}
+                          slotProps={{ input: { sx: { bgcolor: "#fff", borderRadius: 2, height: 48 } } }}
+                        />
+                      </Box>
+                      <Button
+                        variant="contained" onClick={verifyOtp}
+                        sx={{ py: 1.2, bgcolor: "#14213d", borderRadius: 2, fontWeight: 700, "&:hover": { bgcolor: "#0f1724" } }}
+                      >
+                        Confirm OTP
+                      </Button>
+                    </>
+                  )}
+
+                  {/* VERIFIED */}
+                  {verified && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "green" }}>
+                      <CheckCircleOutlineIcon />
+                      <Typography>Email verified successfully!</Typography>
+                    </Box>
+                  )}
+
+                  {/* SUBMIT */}
+                  {verified && (
+                    <Button
+                      type="submit" fullWidth
+                      sx={{ py: 1.4, bgcolor: "#14213d", color: "#fff", borderRadius: 2, fontWeight: 700, "&:hover": { bgcolor: "#0f1724" } }}
+                    >
+                      Save Changes
+                    </Button>
+                  )}
+
+                  <Typography textAlign="center" variant="body2">
+                    Remember your password?{" "}
+                    <Link to="/" style={{ color: "#f97316", fontWeight: 600, textDecoration: "none" }}>Sign In</Link>
+                  </Typography>
+
+                </Stack>
+              </form>
+            </CardContent>
+          </Card>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  MAIN COMPONENT — routes to Forgot or Signup
+// ════════════════════════════════════════════════════════
+export default function SignUp() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const isForgotMode = params.get("mode") === "forgot";
 
+  // If forgot mode — render original forgot component
+  if (isForgotMode) return <ForgotPassword />;
+
+  // ── Signup state ──────────────────────────────────────
+  const {
+    register, handleSubmit, watch,
+    formState: { errors },
+  } = useForm<SignupFormData>({ resolver: zodResolver(signupSchema) });
+
+  const navigate = useNavigate();
   const [step, setStep] = useState(0);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -271,12 +407,9 @@ export default function SignUp() {
 
   useEffect(() => {
     document.body.style.overflow = "auto";
-    return () => {
-      document.body.style.overflow = "hidden";
-    };
+    return () => { document.body.style.overflow = "hidden"; };
   }, []);
 
-  // ── Resume handler ────────────────────────────────────────────────────────
   const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -286,9 +419,7 @@ export default function SignUp() {
       setIsParsing(true);
       const fd = new FormData();
       fd.append("resume", file);
-      const res = await axios.post("http://localhost:5000/api/parse-resume", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await axios.post("http://localhost:5000/api/parse-resume", fd, { headers: { "Content-Type": "multipart/form-data" } });
       setParsedData(res.data);
       toast.success("Resume uploaded successfully");
       setStep(2);
@@ -308,18 +439,11 @@ export default function SignUp() {
     recaptchaRef.current?.reset();
   };
 
-  // ── OTP handlers ─────────────────────────────────────────────────────────
   const sendOtp = async () => {
-    if (!captchaToken) {
-      toast.error("Please complete the CAPTCHA first");
-      return;
-    }
+    if (!captchaToken) { toast.error("Please complete the CAPTCHA first"); return; }
     try {
       setIsSendingOtp(true);
-      await axios.post("http://localhost:5000/api/send-otp", {
-        email: emailVal,
-        captchaToken,
-      });
+      await axios.post("http://localhost:5000/api/send-otp", { email: emailVal, captchaToken });
       setShowOtpInput(true);
       setStep(3);
       toast.success("OTP sent to your email");
@@ -347,21 +471,14 @@ export default function SignUp() {
     setShowOtpInput(false);
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: SignupFormData) => {
     if (!verified) { toast.error("Please verify your email first"); return; }
     if (!selectedFile) { toast.error("Resume is required"); return; }
-
     try {
       const signupRes = await axios.post("http://localhost:5000/api/signup", {
-        email: data.email,
-        password: data.password,
-        name: data.name,
-        phone: data.phone,
+        email: data.email, password: data.password, name: data.name, phone: data.phone,
       });
-
       const loginId = signupRes.data?.id || signupRes.data?.loginId;
-
       if (loginId) {
         const profileForm = new FormData();
         profileForm.append("resume", selectedFile);
@@ -374,12 +491,8 @@ export default function SignUp() {
         profileForm.append("dateOfBirth", parsedData?.dateOfBirth || "");
         profileForm.append("educationDetails", JSON.stringify(parsedData?.educationDetails || []));
         profileForm.append("experienceDetails", JSON.stringify(parsedData?.experienceDetails || []));
-
-        await axios.post("http://localhost:5000/api/apply", profileForm, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await axios.post("http://localhost:5000/api/apply", profileForm, { headers: { "Content-Type": "multipart/form-data" } });
       }
-
       toast.success("Account created successfully!");
       navigate("/");
     } catch {
@@ -387,192 +500,93 @@ export default function SignUp() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", fontFamily: "'DM Sans', sans-serif" }}>
+    <Box sx={{ minHeight: "100vh", display: "flex" }}>
       <Toaster position="top-right" richColors />
 
       {/* ── LEFT PANEL ── */}
       <Box
         sx={{
-          display: { xs: "none", lg: "flex" },
-          width: "46%",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
+          display: { xs: "none", lg: "flex" }, width: "46%",
+          flexDirection: "column", alignItems: "flex-start", justifyContent: "space-between",
           p: "48px 52px",
           background: `linear-gradient(145deg, #0a1628 0%, ${PRIMARY} 45%, #1e3a72 100%)`,
-          color: "#fff",
-          position: "relative",
-          overflow: "hidden",
+          color: "#fff", position: "relative", overflow: "hidden",
         }}
       >
-        {/* Background texture dots */}
         {[...Array(6)].map((_, i) => (
-          <Box
-            key={i}
-            sx={{
-              position: "absolute",
-              borderRadius: "50%",
-              border: "1px solid rgba(249,115,22,0.12)",
-              width: 80 + i * 80,
-              height: 80 + i * 80,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-            }}
-          />
+          <Box key={i} sx={{ position: "absolute", borderRadius: "50%", border: "1px solid rgba(249,115,22,0.12)", width: 80 + i * 80, height: 80 + i * 80, top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }} />
         ))}
 
-        {/* Top: Logo */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, position: "relative", zIndex: 1 }}>
-          <Box
-            sx={{
-              width: 38, height: 38, borderRadius: "10px",
-              background: `linear-gradient(135deg, ${ORANGE}, #ea580c)`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(249,115,22,0.4)",
-            }}
-          >
+          <Box sx={{ width: 38, height: 38, borderRadius: "10px", background: `linear-gradient(135deg, ${ORANGE}, #ea580c)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(249,115,22,0.4)" }}>
             <WorkOutlineRoundedIcon sx={{ fontSize: 20 }} />
           </Box>
-          <Typography sx={{ fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>
-            TalentHub
-          </Typography>
+          <Typography sx={{ fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>TalentHub</Typography>
         </Box>
 
-        {/* Middle: Main content */}
         <Box sx={{ position: "relative", zIndex: 1, maxWidth: 380 }}>
-          <Box
-            sx={{
-              display: "inline-block", px: 1.5, py: 0.5, mb: 3,
-              bgcolor: "rgba(249,115,22,0.15)",
-              border: "1px solid rgba(249,115,22,0.3)",
-              borderRadius: "20px",
-            }}
-          >
-            <Typography sx={{ fontSize: 12, color: ORANGE, fontWeight: 600, letterSpacing: 0.5 }}>
-              {isForgotMode ? "Account Recovery" : "Join TalentHub Today"}
-            </Typography>
+          <Box sx={{ display: "inline-block", px: 1.5, py: 0.5, mb: 3, bgcolor: "rgba(249,115,22,0.15)", border: "1px solid rgba(249,115,22,0.3)", borderRadius: "20px" }}>
+            <Typography sx={{ fontSize: 12, color: ORANGE, fontWeight: 600, letterSpacing: 0.5 }}>Join TalentHub Today</Typography>
           </Box>
 
-          <Typography
-            sx={{
-              fontSize: 36, fontWeight: 800, lineHeight: 1.15,
-              letterSpacing: -1, mb: 2,
-            }}
-          >
-            {isForgotMode ? (
-              "Recover your account access"
-            ) : (
-              <>
-                Your next opportunity<br />
-                <Box component="span" sx={{ color: ORANGE }}>starts here.</Box>
-              </>
-            )}
+          <Typography sx={{ fontSize: 36, fontWeight: 800, lineHeight: 1.15, letterSpacing: -1, mb: 2 }}>
+            Your next opportunity<br />
+            <Box component="span" sx={{ color: ORANGE }}>starts here.</Box>
           </Typography>
 
           <Typography sx={{ opacity: 0.6, lineHeight: 1.8, fontSize: 14, mb: 4 }}>
-            {isForgotMode
-              ? "Enter your details below to reset your password securely."
-              : "Create your profile, upload your resume, and connect with top companies hiring right now."}
+            Create your profile, upload your resume, and connect with top companies hiring right now.
           </Typography>
 
-          {/* Stats */}
-          {!isForgotMode && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {[
-                { icon: <PeopleAltOutlinedIcon sx={{ fontSize: 16 }} />, stat: "10,000+", label: "Active Candidates" },
-                { icon: <BusinessOutlinedIcon sx={{ fontSize: 16 }} />, stat: "500+", label: "Partner Companies" },
-                { icon: <TrendingUpOutlinedIcon sx={{ fontSize: 16 }} />, stat: "95%", label: "Placement Rate" },
-              ].map(({ icon, stat, label }) => (
-                <Box key={label} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <Box
-                    sx={{
-                      width: 36, height: 36, borderRadius: "10px",
-                      bgcolor: "rgba(255,255,255,0.07)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      color: ORANGE,
-                    }}
-                  >
-                    {icon}
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontWeight: 800, fontSize: 16, lineHeight: 1 }}>{stat}</Typography>
-                    <Typography sx={{ opacity: 0.5, fontSize: 12 }}>{label}</Typography>
-                  </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {[
+              { icon: <PeopleAltOutlinedIcon sx={{ fontSize: 16 }} />, stat: "10,000+", label: "Active Candidates" },
+              { icon: <BusinessOutlinedIcon sx={{ fontSize: 16 }} />, stat: "500+", label: "Partner Companies" },
+              { icon: <TrendingUpOutlinedIcon sx={{ fontSize: 16 }} />, stat: "95%", label: "Placement Rate" },
+            ].map(({ icon, stat, label }) => (
+              <Box key={label} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box sx={{ width: 36, height: 36, borderRadius: "10px", bgcolor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: ORANGE }}>
+                  {icon}
                 </Box>
-              ))}
-            </Box>
-          )}
+                <Box>
+                  <Typography sx={{ fontWeight: 800, fontSize: 16, lineHeight: 1 }}>{stat}</Typography>
+                  <Typography sx={{ opacity: 0.5, fontSize: 12 }}>{label}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Box>
         </Box>
 
-        {/* Bottom: Footer note */}
         <Box sx={{ position: "relative", zIndex: 1 }}>
-          <Typography sx={{ fontSize: 12, opacity: 0.35 }}>
-            © 2025 TalentHub · Trusted by professionals
-          </Typography>
+          <Typography sx={{ fontSize: 12, opacity: 0.35 }}>© 2025 TalentHub · Trusted by professionals</Typography>
         </Box>
       </Box>
 
       {/* ── RIGHT PANEL ── */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: { xs: 2, sm: 3, md: 4 },
-          background: "#f1f5f9",
-          overflowY: "auto",
-        }}
-      >
+      <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", p: { xs: 2, sm: 3, md: 4 }, background: "#f1f5f9", overflowY: "auto" }}>
         <Box sx={{ width: "100%", maxWidth: 500, py: 2 }}>
 
-          {/* Top label */}
           <Box sx={{ textAlign: "center", mb: 3 }}>
             <Typography sx={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>
-              {isForgotMode ? "Remember your password?" : "Already have an account?"}{" "}
-              <Link to="/" style={{ color: ORANGE, fontWeight: 700, textDecoration: "none" }}>
-                {isForgotMode ? "Sign In" : "Log in"}
-              </Link>
+              Already have an account?{" "}
+              <Link to="/" style={{ color: ORANGE, fontWeight: 700, textDecoration: "none" }}>Log in</Link>
             </Typography>
           </Box>
 
-          <Card
-            elevation={0}
-            sx={{
-              borderRadius: "20px",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 4px 24px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
-              overflow: "visible",
-            }}
-          >
+          <Card elevation={0} sx={{ borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 4px 24px rgba(15,23,42,0.06)", overflow: "visible" }}>
             <CardContent sx={{ p: { xs: 3, sm: "32px 36px" } }}>
 
-              {/* Header */}
               <Box mb={3.5}>
-                <Typography
-                  sx={{
-                    fontSize: 24, fontWeight: 800, color: PRIMARY,
-                    letterSpacing: -0.8, mb: 0.5, lineHeight: 1.2,
-                  }}
-                >
-                  {isForgotMode ? "Reset your password" : "Create your account"}
+                <Typography sx={{ fontSize: 24, fontWeight: 800, color: PRIMARY, letterSpacing: -0.8, mb: 0.5, lineHeight: 1.2 }}>
+                  Create your account
                 </Typography>
                 <Typography sx={{ fontSize: 13.5, color: "#64748b", lineHeight: 1.6 }}>
-                  {isForgotMode
-                    ? "Enter your email and set a new password below."
-                    : "Fill in your details step by step to get started."}
+                  Fill in your details step by step to get started.
                 </Typography>
               </Box>
 
-              {/* Step indicator */}
-              {!isForgotMode && (
-                <StepIndicator currentStep={verified ? 3 : step} />
-              )}
+              <StepIndicator currentStep={verified ? 3 : step} />
 
               <form onSubmit={handleSubmit(onSubmit)}>
                 <Stack spacing={2}>
@@ -582,116 +596,28 @@ export default function SignUp() {
                     <Stack spacing={2}>
                       <Box>
                         <FieldLabel>Full Name</FieldLabel>
-                        <TextField
-                          fullWidth size="small"
-                          placeholder="John Doe"
-                          {...register("name")}
-                          error={!!errors.name}
-                          helperText={errors.name?.message}
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PersonOutlineIcon sx={{ fontSize: 17, color: "#94a3b8" }} />
-                                </InputAdornment>
-                              ),
-                              sx: { height: 44 },
-                            },
-                          }}
-                          sx={fieldStyle}
-                        />
+                        <TextField fullWidth size="small" placeholder="John Doe" {...register("name")} error={!!errors.name} helperText={errors.name?.message}
+                          slotProps={{ input: { startAdornment: <InputAdornment position="start"><PersonOutlineIcon sx={{ fontSize: 17, color: "#94a3b8" }} /></InputAdornment>, sx: { height: 44 } } }} sx={fieldStyle} />
                       </Box>
-
                       <Box>
                         <FieldLabel>Phone Number</FieldLabel>
-                        <TextField
-                          fullWidth size="small"
-                          placeholder="10-digit mobile number"
-                          {...register("phone")}
-                          error={!!errors.phone}
-                          helperText={errors.phone?.message}
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PhoneOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} />
-                                </InputAdornment>
-                              ),
-                              sx: { height: 44 },
-                            },
-                          }}
-                          sx={fieldStyle}
-                        />
+                        <TextField fullWidth size="small" placeholder="10-digit mobile number" {...register("phone")} error={!!errors.phone} helperText={errors.phone?.message}
+                          slotProps={{ input: { startAdornment: <InputAdornment position="start"><PhoneOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} /></InputAdornment>, sx: { height: 44 } } }} sx={fieldStyle} />
                       </Box>
-
                       <Box>
                         <FieldLabel>Email Address</FieldLabel>
-                        <TextField
-                          fullWidth size="small"
-                          placeholder="you@example.com"
-                          {...register("email")}
-                          error={!!errors.email}
-                          helperText={errors.email?.message}
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <EmailOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} />
-                                </InputAdornment>
-                              ),
-                              sx: { height: 44 },
-                            },
-                          }}
-                          sx={fieldStyle}
-                        />
+                        <TextField fullWidth size="small" placeholder="you@example.com" {...register("email")} error={!!errors.email} helperText={errors.email?.message}
+                          slotProps={{ input: { startAdornment: <InputAdornment position="start"><EmailOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} /></InputAdornment>, sx: { height: 44 } } }} sx={fieldStyle} />
                       </Box>
-
                       <Box>
-                        <FieldLabel>{isForgotMode ? "New Password" : "Password"}</FieldLabel>
-                        <TextField
-                          type="password"
-                          fullWidth size="small"
-                          placeholder="Minimum 6 characters"
-                          {...register("password")}
-                          error={!!errors.password}
-                          helperText={errors.password?.message}
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <LockOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} />
-                                </InputAdornment>
-                              ),
-                              sx: { height: 44 },
-                            },
-                          }}
-                          sx={fieldStyle}
-                        />
+                        <FieldLabel>Password</FieldLabel>
+                        <TextField type="password" fullWidth size="small" placeholder="Minimum 6 characters" {...register("password")} error={!!errors.password} helperText={errors.password?.message}
+                          slotProps={{ input: { startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ fontSize: 17, color: "#94a3b8" }} /></InputAdornment>, sx: { height: 44 } } }} sx={fieldStyle} />
                       </Box>
-
                       {step === 0 && (
-                        <Button
-                          variant="contained"
-                          disabled={!basicInfoComplete}
-                          onClick={() => { if (basicInfoComplete) setStep(1); }}
+                        <Button variant="contained" disabled={!basicInfoComplete} onClick={() => { if (basicInfoComplete) setStep(1); }}
                           endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                          sx={{
-                            mt: 0.5,
-                            bgcolor: PRIMARY,
-                            borderRadius: "10px",
-                            height: 44,
-                            fontWeight: 700,
-                            textTransform: "none",
-                            fontSize: 14,
-                            letterSpacing: 0.2,
-                            boxShadow: "0 4px 14px rgba(26,46,90,0.25)",
-                            "&:hover": {
-                              bgcolor: "#0f1e3d",
-                              boxShadow: "0 6px 18px rgba(26,46,90,0.35)",
-                            },
-                            "&:disabled": { bgcolor: "#e2e8f0", color: "#94a3b8", boxShadow: "none" },
-                          }}
-                        >
+                          sx={{ mt: 0.5, bgcolor: PRIMARY, borderRadius: "10px", height: 44, fontWeight: 700, textTransform: "none", fontSize: 14, boxShadow: "0 4px 14px rgba(26,46,90,0.25)", "&:hover": { bgcolor: "#0f1e3d" }, "&:disabled": { bgcolor: "#e2e8f0", color: "#94a3b8", boxShadow: "none" } }}>
                           Continue
                         </Button>
                       )}
@@ -702,96 +628,26 @@ export default function SignUp() {
                   {step >= 1 && (
                     <SectionBox label="Resume Upload" stepNumber={2} done={!!selectedFile && step > 1}>
                       {!selectedFile ? (
-                        <Button
-                          variant="outlined"
-                          component="label"
-                          fullWidth
-                          startIcon={
-                            isParsing ? (
-                              <CircularProgress size={15} sx={{ color: ORANGE }} />
-                            ) : (
-                              <UploadFileOutlinedIcon sx={{ fontSize: 18 }} />
-                            )
-                          }
+                        <Button variant="outlined" component="label" fullWidth
+                          startIcon={isParsing ? <CircularProgress size={15} sx={{ color: ORANGE }} /> : <UploadFileOutlinedIcon sx={{ fontSize: 18 }} />}
                           disabled={isParsing}
-                          sx={{
-                            borderRadius: "10px",
-                            borderColor: "#e2e8f0",
-                            borderStyle: "dashed",
-                            borderWidth: 2,
-                            color: "#475569",
-                            fontWeight: 600,
-                            height: 72,
-                            textTransform: "none",
-                            fontSize: 13.5,
-                            flexDirection: "column",
-                            gap: 0.3,
-                            bgcolor: "#f8fafc",
-                            "&:hover": {
-                              bgcolor: "#fff7ed",
-                              borderColor: ORANGE,
-                              color: ORANGE,
-                            },
-                            transition: "all 0.2s ease",
-                          }}
-                        >
+                          sx={{ borderRadius: "10px", borderColor: "#e2e8f0", borderStyle: "dashed", borderWidth: 2, color: "#475569", fontWeight: 600, height: 72, textTransform: "none", fontSize: 13.5, flexDirection: "column", gap: 0.3, bgcolor: "#f8fafc", "&:hover": { bgcolor: "#fff7ed", borderColor: ORANGE, color: ORANGE }, transition: "all 0.2s ease" }}>
                           {isParsing ? "Parsing your resume..." : "Click to upload resume"}
-                          {!isParsing && (
-                            <Typography sx={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>
-                              PDF, DOC, DOCX supported
-                            </Typography>
-                          )}
-                          <input
-                            type="file"
-                            hidden
-                            accept=".pdf,.doc,.docx"
-                            onChange={handleResumeChange}
-                          />
+                          {!isParsing && <Typography sx={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>PDF, DOC, DOCX supported</Typography>}
+                          <input type="file" hidden accept=".pdf,.doc,.docx" onChange={handleResumeChange} />
                         </Button>
                       ) : (
-                        <Box
-                          sx={{
-                            display: "flex", alignItems: "center",
-                            justifyContent: "space-between",
-                            p: "10px 14px",
-                            border: "1.5px solid #bbf7d0",
-                            borderRadius: "10px",
-                            bgcolor: "#f0fdf4",
-                          }}
-                        >
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", p: "10px 14px", border: "1.5px solid #bbf7d0", borderRadius: "10px", bgcolor: "#f0fdf4" }}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
-                            <Box
-                              sx={{
-                                width: 34, height: 34, borderRadius: "8px",
-                                bgcolor: "#dcfce7",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                flexShrink: 0,
-                              }}
-                            >
+                            <Box sx={{ width: 34, height: 34, borderRadius: "8px", bgcolor: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <InsertDriveFileOutlinedIcon sx={{ color: "#16a34a", fontSize: 17 }} />
                             </Box>
                             <Box sx={{ minWidth: 0 }}>
-                              <Typography
-                                sx={{
-                                  fontSize: 13, fontWeight: 700, color: "#15803d",
-                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                }}
-                              >
-                                {selectedFile.name}
-                              </Typography>
-                              <Typography sx={{ fontSize: 11, color: "#16a34a" }}>
-                                {(selectedFile.size / 1024).toFixed(0)} KB
-                              </Typography>
+                              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#15803d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selectedFile.name}</Typography>
+                              <Typography sx={{ fontSize: 11, color: "#16a34a" }}>{(selectedFile.size / 1024).toFixed(0)} KB</Typography>
                             </Box>
                           </Box>
-                          <Button
-                            size="small" onClick={removeResume}
-                            sx={{
-                              minWidth: 0, color: "#dc2626", p: 0.8, flexShrink: 0,
-                              borderRadius: "8px",
-                              "&:hover": { bgcolor: "#fef2f2" },
-                            }}
-                          >
+                          <Button size="small" onClick={removeResume} sx={{ minWidth: 0, color: "#dc2626", p: 0.8, flexShrink: 0, borderRadius: "8px", "&:hover": { bgcolor: "#fef2f2" } }}>
                             <DeleteOutlineIcon sx={{ fontSize: 17 }} />
                           </Button>
                         </Box>
@@ -805,57 +661,14 @@ export default function SignUp() {
                       <Stack spacing={2}>
                         <Box>
                           <FieldLabel>Complete the security check below</FieldLabel>
-                          <Box
-                            sx={{
-                              border: "1.5px solid #e2e8f0",
-                              borderRadius: "10px",
-                              p: 1.5,
-                              bgcolor: "#f8fafc",
-                              display: "flex",
-                              justifyContent: "center",
-                              overflow: "visible",
-                              position: "relative",
-                              zIndex: 9999,
-                            }}
-                          >
-                            <ReCAPTCHA
-                              ref={recaptchaRef}
-                              sitekey={RECAPTCHA_SITE_KEY}
-                              onChange={(token) => setCaptchaToken(token)}
-                              onExpired={() => setCaptchaToken(null)}
-                            />
+                          <Box sx={{ border: "1.5px solid #e2e8f0", borderRadius: "10px", p: 1.5, bgcolor: "#f8fafc", display: "flex", justifyContent: "center", overflow: "visible", position: "relative", zIndex: 9999 }}>
+                            <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={(token) => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} />
                           </Box>
                         </Box>
-
                         {!showOtpInput && (
-                          <Button
-                            variant="contained"
-                            onClick={sendOtp}
-                            disabled={!captchaToken || isSendingOtp}
-                            startIcon={
-                              isSendingOtp ? (
-                                <CircularProgress size={15} sx={{ color: "#fff" }} />
-                              ) : (
-                                <VerifiedUserOutlinedIcon sx={{ fontSize: 17 }} />
-                              )
-                            }
-                            sx={{
-                              borderRadius: "10px",
-                              bgcolor: captchaToken ? PRIMARY : "#e2e8f0",
-                              color: captchaToken ? "#fff" : "#94a3b8",
-                              height: 44,
-                              fontWeight: 700,
-                              textTransform: "none",
-                              fontSize: 13.5,
-                              boxShadow: captchaToken ? "0 4px 14px rgba(26,46,90,0.25)" : "none",
-                              "&:hover": {
-                                bgcolor: captchaToken ? "#0f1e3d" : "#e2e8f0",
-                                boxShadow: captchaToken ? "0 6px 18px rgba(26,46,90,0.35)" : "none",
-                              },
-                              "&:disabled": { bgcolor: "#e2e8f0", color: "#94a3b8" },
-                              transition: "all 0.2s ease",
-                            }}
-                          >
+                          <Button variant="contained" onClick={sendOtp} disabled={!captchaToken || isSendingOtp}
+                            startIcon={isSendingOtp ? <CircularProgress size={15} sx={{ color: "#fff" }} /> : <VerifiedUserOutlinedIcon sx={{ fontSize: 17 }} />}
+                            sx={{ borderRadius: "10px", bgcolor: captchaToken ? PRIMARY : "#e2e8f0", color: captchaToken ? "#fff" : "#94a3b8", height: 44, fontWeight: 700, textTransform: "none", fontSize: 13.5, boxShadow: captchaToken ? "0 4px 14px rgba(26,46,90,0.25)" : "none", "&:hover": { bgcolor: captchaToken ? "#0f1e3d" : "#e2e8f0" }, "&:disabled": { bgcolor: "#e2e8f0", color: "#94a3b8" }, transition: "all 0.2s ease" }}>
                             {isSendingOtp ? "Sending code..." : "Send Verification Code"}
                           </Button>
                         )}
@@ -867,75 +680,23 @@ export default function SignUp() {
                   {step >= 3 && !verified && (
                     <SectionBox label="Enter OTP" stepNumber={4} done={verified}>
                       <Stack spacing={2}>
-                        {/* Email hint */}
-                        <Box
-                          sx={{
-                            display: "flex", alignItems: "center", gap: 1,
-                            p: "10px 14px", borderRadius: "8px",
-                            bgcolor: PRIMARY_LIGHT, border: `1px solid #dce5f5`,
-                          }}
-                        >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, p: "10px 14px", borderRadius: "8px", bgcolor: PRIMARY_LIGHT, border: `1px solid #dce5f5` }}>
                           <EmailOutlinedIcon sx={{ fontSize: 15, color: PRIMARY, flexShrink: 0 }} />
-                          <Typography sx={{ fontSize: 12.5, color: PRIMARY }}>
-                            Code sent to <strong>{emailVal}</strong>
-                          </Typography>
+                          <Typography sx={{ fontSize: 12.5, color: PRIMARY }}>Code sent to <strong>{emailVal}</strong></Typography>
                         </Box>
-
                         <Box>
                           <FieldLabel>6-digit verification code</FieldLabel>
-                          <TextField
-                            fullWidth size="small"
-                            placeholder="· · · · · ·"
-                            {...register("otp")}
-                            inputProps={{
-                              maxLength: 6,
-                              style: {
-                                letterSpacing: 10,
-                                fontSize: 22,
-                                fontWeight: 800,
-                                textAlign: "center",
-                                color: PRIMARY,
-                              },
-                            }}
-                            sx={{
-                              ...fieldStyle,
-                              "& .MuiOutlinedInput-root": {
-                                ...fieldStyle["& .MuiOutlinedInput-root"],
-                                height: 58,
-                              },
-                            }}
-                          />
+                          <TextField fullWidth size="small" placeholder="· · · · · ·" {...register("otp")}
+                            inputProps={{ maxLength: 6, style: { letterSpacing: 10, fontSize: 22, fontWeight: 800, textAlign: "center", color: PRIMARY } }}
+                            sx={{ ...fieldStyle, "& .MuiOutlinedInput-root": { ...fieldStyle["& .MuiOutlinedInput-root"], height: 58 } }} />
                         </Box>
-
-                        <Button
-                          variant="contained"
-                          onClick={verifyOtp}
-                          sx={{
-                            bgcolor: PRIMARY,
-                            borderRadius: "10px",
-                            height: 44,
-                            fontWeight: 700,
-                            textTransform: "none",
-                            fontSize: 13.5,
-                            boxShadow: "0 4px 14px rgba(26,46,90,0.25)",
-                            "&:hover": { bgcolor: "#0f1e3d", boxShadow: "0 6px 18px rgba(26,46,90,0.35)" },
-                          }}
-                        >
+                        <Button variant="contained" onClick={verifyOtp}
+                          sx={{ bgcolor: PRIMARY, borderRadius: "10px", height: 44, fontWeight: 700, textTransform: "none", fontSize: 13.5, boxShadow: "0 4px 14px rgba(26,46,90,0.25)", "&:hover": { bgcolor: "#0f1e3d" } }}>
                           Verify & Continue
                         </Button>
-
                         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                          <Typography sx={{ fontSize: 12.5, color: "#64748b" }}>
-                            Didn't receive the code?
-                          </Typography>
-                          <Button
-                            size="small" onClick={resendOtp}
-                            sx={{
-                              color: ORANGE, textTransform: "none", fontSize: 12.5,
-                              fontWeight: 700, p: "2px 6px", minWidth: 0,
-                              "&:hover": { bgcolor: "#fff7ed" },
-                            }}
-                          >
+                          <Typography sx={{ fontSize: 12.5, color: "#64748b" }}>Didn't receive the code?</Typography>
+                          <Button size="small" onClick={resendOtp} sx={{ color: ORANGE, textTransform: "none", fontSize: 12.5, fontWeight: 700, p: "2px 6px", minWidth: 0, "&:hover": { bgcolor: "#fff7ed" } }}>
                             Resend
                           </Button>
                         </Box>
@@ -945,73 +706,30 @@ export default function SignUp() {
 
                   {/* ── VERIFIED BADGE ── */}
                   {verified && (
-                    <Box
-                      sx={{
-                        display: "flex", alignItems: "center", gap: 2,
-                        p: "14px 18px", borderRadius: "12px",
-                        bgcolor: "#f0fdf4",
-                        border: "1.5px solid #bbf7d0",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 40, height: 40, borderRadius: "50%",
-                          bgcolor: "#dcfce7",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: "14px 18px", borderRadius: "12px", bgcolor: "#f0fdf4", border: "1.5px solid #bbf7d0" }}>
+                      <Box sx={{ width: 40, height: 40, borderRadius: "50%", bgcolor: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <CheckCircleOutlineIcon sx={{ color: "#16a34a", fontSize: 22 }} />
                       </Box>
                       <Box>
-                        <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#15803d" }}>
-                          Email verified successfully
-                        </Typography>
-                        <Typography sx={{ fontSize: 12, color: "#16a34a" }}>
-                          {emailVal}
-                        </Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#15803d" }}>Email verified successfully</Typography>
+                        <Typography sx={{ fontSize: 12, color: "#16a34a" }}>{emailVal}</Typography>
                       </Box>
                     </Box>
                   )}
 
                   {/* ── SUBMIT ── */}
                   {verified && (
-                    <Button
-                      type="submit"
-                      fullWidth
-                      endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
-                      sx={{
-                        height: 50,
-                        background: `linear-gradient(135deg, ${PRIMARY} 0%, #1e3a72 100%)`,
-                        color: "#fff",
-                        borderRadius: "12px",
-                        fontWeight: 800,
-                        fontSize: 15,
-                        textTransform: "none",
-                        letterSpacing: 0.2,
-                        boxShadow: "0 6px 20px rgba(26,46,90,0.3)",
-                        "&:hover": {
-                          background: `linear-gradient(135deg, #0f1e3d 0%, ${PRIMARY} 100%)`,
-                          boxShadow: "0 10px 28px rgba(26,46,90,0.4)",
-                          transform: "translateY(-1px)",
-                        },
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      {isForgotMode ? "Save New Password" : "Create My Account"}
+                    <Button type="submit" fullWidth endIcon={<ArrowForwardIcon sx={{ fontSize: 16 }} />}
+                      sx={{ height: 50, background: `linear-gradient(135deg, ${PRIMARY} 0%, #1e3a72 100%)`, color: "#fff", borderRadius: "12px", fontWeight: 800, fontSize: 15, textTransform: "none", letterSpacing: 0.2, boxShadow: "0 6px 20px rgba(26,46,90,0.3)", "&:hover": { background: `linear-gradient(135deg, #0f1e3d 0%, ${PRIMARY} 100%)`, boxShadow: "0 10px 28px rgba(26,46,90,0.4)", transform: "translateY(-1px)" }, transition: "all 0.2s ease" }}>
+                      Create My Account
                     </Button>
                   )}
 
-                  {/* ── FOOTER ── */}
                   <Typography textAlign="center" sx={{ fontSize: 12, color: "#94a3b8", pt: 0.5 }}>
                     By creating an account you agree to our{" "}
-                    <Box component="span" sx={{ color: PRIMARY, fontWeight: 600, cursor: "pointer" }}>
-                      Terms of Service
-                    </Box>{" "}
-                    and{" "}
-                    <Box component="span" sx={{ color: PRIMARY, fontWeight: 600, cursor: "pointer" }}>
-                      Privacy Policy
-                    </Box>
+                    <Box component="span" sx={{ color: PRIMARY, fontWeight: 600, cursor: "pointer" }}>Terms of Service</Box>
+                    {" "}and{" "}
+                    <Box component="span" sx={{ color: PRIMARY, fontWeight: 600, cursor: "pointer" }}>Privacy Policy</Box>
                   </Typography>
 
                 </Stack>

@@ -7,6 +7,7 @@ import "./models/applications";
 import "./models/refreshToken";
 import "./models/tokenBlacklist";
 import "./models/employmentType";
+import "./models/interviewschedule";
 import express from "express";
 import deptRoutes from "./routes/deptRoutes";
 import jobRoutes from "./routes/jobRoutes";
@@ -14,6 +15,7 @@ import candidateRoutes from "./routes/candidateRoutes";
 import loginRoutes from "./routes/loginRoutes";
 import applicationsRoutes from "./routes/applicationsRoutes";
 import employmentTypeRoutes from "./routes/employmentTypeRoutes";
+import scheduleinterviewRoutes from "./routes/scheduleinterviewRoutes";
 import cors from "cors";
 import path from "path";
 import cookieParser from 'cookie-parser';
@@ -46,6 +48,7 @@ app.use("/api", jobRoutes);
 app.use("/api", candidateRoutes);
 app.use("/api", applicationsRoutes);
 app.use("/api", employmentTypeRoutes);
+app.use("/api", scheduleinterviewRoutes);
 
 cron.schedule('*/30 * * * *', async () => {
   try {

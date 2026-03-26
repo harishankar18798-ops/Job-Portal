@@ -13,10 +13,6 @@ import {
   Divider,
   FormControlLabel,
   Checkbox,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -115,11 +111,6 @@ export default function CandidateForm() {
   const [editMode, setEditMode] = useState(() => !isAdmin);
   const [isParsing, setIsParsing] = useState(false);
 
-  // ── Withdraw dialog state ─────────────────────────────────────────────────
-  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
-  const [withdrawAppId, setWithdrawAppId] = useState<number | null>(null);
-  const [withdrawJobTitle, setWithdrawJobTitle] = useState<string>("");
-
   const [educationList, setEducationList] = useState([
     { degree: "", institution: "", cgpa: "", startDate: "", endDate: "", isCurrent: false },
   ]);
@@ -130,7 +121,6 @@ export default function CandidateForm() {
   const savedExperience = useRef<ExperienceItem[]>([]);
   const savedExistingResume = useRef<string | null>(null);
 
-  // ── Single source of truth for the selected file ──────────────────────────
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const watchedName = watch("name");
@@ -142,12 +132,10 @@ export default function CandidateForm() {
     setSelectedFile(null);
   };
 
-  // ── FIX: copy the File object out BEFORE reset() runs ────────────────────
   const handleResumeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosenFile = e.target.files?.[0];
     if (!chosenFile) return;
 
-    // Store the actual File object immediately — stable, not affected by reset()
     setSelectedFile(chosenFile);
 
     try {
@@ -161,7 +149,6 @@ export default function CandidateForm() {
 
       const data = res.data;
 
-      // reset() may clear the file input — that's fine, selectedFile state is our source of truth
       reset({
         name: data.name || "",
         email: data.email || "",
@@ -170,8 +157,6 @@ export default function CandidateForm() {
         totalExperience: data.totalExperience || 0,
         dateOfBirth: data.dateOfBirth || "",
       });
-
-      // Do NOT call setValue("resume", ...) — selectedFile state owns the file reference
 
       if (data.educationDetails?.length) setEducationList(data.educationDetails);
       if (data.experienceDetails?.length) setExperienceList(data.experienceDetails);
@@ -281,7 +266,6 @@ export default function CandidateForm() {
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     try {
-      // ── FIX: single source of truth — only check selectedFile ────────────
       if (!existingResume && !selectedFile) {
         toast.error("Resume is required");
         return;
@@ -300,11 +284,9 @@ export default function CandidateForm() {
       formData.append("educationDetails", JSON.stringify(educationList));
       formData.append("experienceDetails", JSON.stringify(experienceList));
 
-      // ── FIX: use only selectedFile — no FileList ref ambiguity ───────────
       if (selectedFile) {
         formData.append("resume", selectedFile);
       }
-      // If no selectedFile, backend keeps the existing resume (no append needed)
 
       if (loginId) formData.append("loginId", String(loginId));
 
@@ -322,31 +304,6 @@ export default function CandidateForm() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to submit");
-    }
-  };
-
-  // ── Withdraw handlers ─────────────────────────────────────────────────────
-  const handleWithdrawClick = (appId: number, jobTitle: string) => {
-    setWithdrawAppId(appId);
-    setWithdrawJobTitle(jobTitle);
-    setWithdrawDialogOpen(true);
-  };
-
-  const handleWithdrawConfirm = async () => {
-    if (!withdrawAppId) return;
-    try {
-      await api.put(`/status/${withdrawAppId}`, { status: "Withdrawn" });
-      setApplications((prev) =>
-        prev.map((app) => app.id === withdrawAppId ? { ...app, status: "Withdrawn" } : app)
-      );
-      toast.success("Application withdrawn successfully");
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to withdraw application");
-    } finally {
-      setWithdrawDialogOpen(false);
-      setWithdrawAppId(null);
-      setWithdrawJobTitle("");
     }
   };
 
@@ -376,8 +333,13 @@ export default function CandidateForm() {
       setExperienceList(fetchedExperience);
       savedEducation.current = fetchedEducation.length > 0 ? JSON.parse(JSON.stringify(fetchedEducation)) : [{ degree: "", institution: "", cgpa: "", startDate: "", endDate: "", isCurrent: false }];
       savedExperience.current = JSON.parse(JSON.stringify(fetchedExperience));
-      const applRes = await api.get(`/getappcan/${data.id}`);
-      setApplications(applRes.data);
+
+      // fetch applications only for admin
+      if (isAdmin && data.id) {
+        const applRes = await api.get(`/getappcan/${data.id}`);
+        setApplications(applRes.data);
+      }
+
       setEditMode(false);
     } catch (error) {
       console.error(error);
@@ -613,7 +575,9 @@ export default function CandidateForm() {
               >
                 <Tab icon={<SchoolIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />} iconPosition="start" label="Education" />
                 <Tab icon={<WorkIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />} iconPosition="start" label="Experience" />
-                <Tab icon={<EmojiEventsIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />} iconPosition="start" label="Applications" />
+                {isAdmin && (
+                  <Tab icon={<EmojiEventsIcon sx={{ fontSize: { xs: 14, sm: 16 } }} />} iconPosition="start" label="Applications" />
+                )}
               </Tabs>
 
               <Box sx={{ p: { xs: 2, sm: 3 } }}>
@@ -757,8 +721,8 @@ export default function CandidateForm() {
                   </Box>
                 )}
 
-                {/* Applications Tab */}
-                {activeTab === 2 && (
+                {/* Applications Tab — admin only */}
+                {activeTab === 2 && isAdmin && (
                   <Box>
                     {applications.length === 0 ? (
                       <Typography sx={{ color: "#94a3b8", fontSize: 14, textAlign: "center", py: 3 }}>
@@ -790,21 +754,6 @@ export default function CandidateForm() {
                                     fontWeight: 600, fontSize: 12, borderRadius: 2,
                                   }}
                                 />
-                                {app.status !== "Withdrawn" && !isAdmin && (
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => handleWithdrawClick(app.id, app.job?.title)}
-                                    sx={{
-                                      borderColor: "#dc2626", color: "#dc2626",
-                                      borderRadius: 2, textTransform: "none",
-                                      fontSize: 11, px: 1.2, py: 0.3,
-                                      "&:hover": { bgcolor: "#fef2f2", borderColor: "#dc2626" },
-                                    }}
-                                  >
-                                    Withdraw
-                                  </Button>
-                                )}
                               </Box>
                             </Box>
                             <Divider sx={{ my: 0.5 }} />
@@ -814,46 +763,12 @@ export default function CandidateForm() {
                     )}
                   </Box>
                 )}
+
               </Box>
             </Paper>
           </Box>
         </Box>
       </Container>
-
-      {/* ── Withdraw Confirm Dialog ───────────────────────────────────────── */}
-      <Dialog
-        open={withdrawDialogOpen}
-        onClose={() => setWithdrawDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: "14px" } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16, color: PRIMARY, pb: 1 }}>
-          Withdraw Application
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: 14, color: "#475569" }}>
-            Are you sure you want to withdraw your application for{" "}
-            <strong>{withdrawJobTitle}</strong>? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button
-            onClick={() => setWithdrawDialogOpen(false)}
-            variant="outlined"
-            sx={{ borderColor: "#cbd5e1", color: "#64748b", borderRadius: 2, textTransform: "none", "&:hover": { bgcolor: "#f8fafc" } }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleWithdrawConfirm}
-            variant="contained"
-            sx={{ bgcolor: "#dc2626", borderRadius: 2, textTransform: "none", fontWeight: 600, "&:hover": { bgcolor: "#b91c1c" } }}
-          >
-            Withdraw
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

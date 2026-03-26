@@ -11,6 +11,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import api from "../utils/tokenInstance";
 import { toast, Toaster } from "sonner";
+import ScheduleInterviewDialog from "./Scheduleinterviewdialog";
 
 type ApplicationRow = {
   id:          number;
@@ -58,8 +59,6 @@ const searchFieldSx = {
   "& .MuiInputAdornment-root svg": { fontSize: 16, color: "#94a3b8" },
 };
 
-// ── Status chip styles ────────────────────────────────────────────────────────
-
 const statusStyles: Record<string, { bg: string; color: string; border: string }> = {
   applied:     { bg: "#f0f9ff", color: "#0369a1", border: "#bae6fd" },
   shortlisted: { bg: "#fefce8", color: "#a16207", border: "#fde68a" },
@@ -78,13 +77,8 @@ function StatusSelect({ id, status, onUpdate }: { id: number; status: string; on
       onChange={(e) => onUpdate(id, e.target.value)}
       onClick={(e) => e.stopPropagation()}
       sx={{
-        height: 26,
-        width: 118,
-        fontSize: 12,
-        fontWeight: 700,
-        background: style.bg,
-        color: style.color,
-        border: `1px solid ${style.border}`,
+        height: 26, width: 118, fontSize: 12, fontWeight: 700,
+        background: style.bg, color: style.color, border: `1px solid ${style.border}`,
         borderRadius: "16px",
         "& .MuiOutlinedInput-notchedOutline": { border: "none" },
         "& .MuiSelect-select": { py: "2px", pl: "10px", pr: "24px !important" },
@@ -103,8 +97,6 @@ function StatusSelect({ id, status, onUpdate }: { id: number; status: string; on
   );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function ApplicationsTable() {
   const navigate = useNavigate();
 
@@ -118,6 +110,10 @@ export default function ApplicationsTable() {
   const [aiReport,     setAiReport]     = useState<AIReport | null>(null);
   const [aiLoading,    setAiLoading]    = useState(false);
   const [aiError,      setAiError]      = useState<string | null>(null);
+
+  // ── Schedule dialog state ──────────────────────────────────────────────────
+  const [scheduleOpen,     setScheduleOpen]     = useState(false);
+  const [scheduleRow,      setScheduleRow]      = useState<ApplicationRow | null>(null);
 
   useEffect(() => { fetchApplications(); }, []);
 
@@ -161,6 +157,19 @@ export default function ApplicationsTable() {
       console.error(err);
       setAiError("Failed to fetch AI report. Please try again.");
     } finally { setAiLoading(false); }
+  };
+
+  // ── Open schedule dialog ───────────────────────────────────────────────────
+  const handleOpenSchedule = (row: ApplicationRow) => {
+    setScheduleRow(row);
+    setScheduleOpen(true);
+  };
+
+  // Called when schedule is successfully created — update row status in UI
+  const handleScheduled = (applicationId: number) => {
+    setAllRows(prev =>
+      prev.map(row => row.id === applicationId ? { ...row, status: "Interview" } : row)
+    );
   };
 
   const filteredRows = useMemo(() => allRows.filter(row => {
@@ -216,6 +225,16 @@ export default function ApplicationsTable() {
         </Button>
       ),
     },
+    {
+      field: "schedule", headerName: "Schedule", flex: 0.9, minWidth: 100, sortable: false,
+      renderCell: (params) => (
+        <Button variant="contained" size="small"
+          onClick={() => handleOpenSchedule(params.row)}
+          sx={{ background: "#16a34a", textTransform: "none", fontWeight: 600, borderRadius: "6px", fontSize: 12, "&:hover": { background: "#15803d" } }}>
+          Schedule
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -252,7 +271,7 @@ export default function ApplicationsTable() {
 
         {/* DataGrid */}
         <Box sx={{ overflowX: { xs: "auto", sm: "hidden" } }}>
-          <Box sx={{ minWidth: { xs: 760, sm: "100%" } }}>
+          <Box sx={{ minWidth: { xs: 860, sm: "100%" } }}>
             <DataGrid
               autoHeight
               rows={filteredRows}
@@ -282,7 +301,6 @@ export default function ApplicationsTable() {
                 "& .MuiDataGrid-row": { "&:hover": { background: "#f8fafc" } },
                 "& .MuiDataGrid-cell": { borderBottom: "1px solid #f1f5f9", color: "#334155", fontSize: { xs: 12, sm: 13 }, display: "flex", alignItems: "center" },
                 "& .MuiDataGrid-footerContainer": { borderTop: `1px solid ${BORDER_COLOR}` },
-                "& .MuiNativeSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
                 "& .MuiSelect-select:focus": { backgroundColor: "#fff3e6 !important" },
                 "& .MuiTablePagination-select:focus": { backgroundColor: "#fff3e6 !important" },
                 "& .MuiIconButton-root:hover": { backgroundColor: "transparent" },
@@ -299,7 +317,6 @@ export default function ApplicationsTable() {
         <DialogTitle sx={{ background: NAVY, color: "#fff", px: 3, py: 2 }}>
           <Typography sx={{ fontWeight: 700, fontSize: { xs: 15, sm: 17 } }}>AI Candidate Report</Typography>
         </DialogTitle>
-
         <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
           {aiLoading && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
@@ -327,26 +344,20 @@ export default function ApplicationsTable() {
                   sx={{ ml: "auto", background: getScoreColor(aiReport.matchScore) + "20", color: getScoreColor(aiReport.matchScore), fontWeight: 700, fontSize: 12, border: `1px solid ${getScoreColor(aiReport.matchScore)}40` }}
                 />
               </Box>
-
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: 13, color: NAVY_TEXT, mb: 0.5 }}>Remarks</Typography>
                 <Typography sx={{ fontSize: 13, color: "#475569", lineHeight: 1.7 }}>{aiReport.remarks}</Typography>
               </Box>
-
               <Divider />
-
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#16a34a", mb: 0.5 }}>Advantages</Typography>
                 <Typography sx={{ fontSize: 13, color: "#475569", lineHeight: 1.7 }}>{aiReport.advantages}</Typography>
               </Box>
-
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#dc2626", mb: 0.5 }}>Disadvantages</Typography>
                 <Typography sx={{ fontSize: 13, color: "#475569", lineHeight: 1.7 }}>{aiReport.disadvantages}</Typography>
               </Box>
-
               <Divider />
-
               <Box sx={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", px: 2.5, py: 2 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#1d4ed8", mb: 0.5 }}>Recommendation</Typography>
                 <Typography sx={{ fontSize: 13, color: "#1e40af", lineHeight: 1.7 }}>{aiReport.recommendation}</Typography>
@@ -354,7 +365,6 @@ export default function ApplicationsTable() {
             </Box>
           )}
         </DialogContent>
-
         <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${BORDER_COLOR}` }}>
           <Button onClick={() => setAiReportOpen(false)} variant="contained"
             sx={{ background: NAVY, textTransform: "none", fontWeight: 600, borderRadius: "8px", px: 3, "&:hover": { background: "#0c1a3a" } }}>
@@ -362,6 +372,18 @@ export default function ApplicationsTable() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Schedule Interview Dialog */}
+      {scheduleRow && (
+        <ScheduleInterviewDialog
+          open={scheduleOpen}
+          onClose={() => setScheduleOpen(false)}
+          applicationId={scheduleRow.id}
+          candidateName={scheduleRow.candidate?.name ?? ""}
+          jobTitle={scheduleRow.job?.title ?? ""}
+          onScheduled={handleScheduled}
+        />
+      )}
     </Box>
   );
 }

@@ -1,18 +1,10 @@
 import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Typography,
   Button,
   Container,
   Box,
   Chip,
   Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
   Avatar,
   Slider,
   FormGroup,
@@ -25,20 +17,15 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
-import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import BusinessCenterOutlinedIcon from "@mui/icons-material/BusinessCenterOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useState } from "react";
 import api from "../utils/tokenInstance";
-import { getUserId } from "../utils/auth";
-import { toast, Toaster } from "sonner";
+import { Toaster } from "sonner";
 import { useNavigate } from "react-router-dom";
-import GuestApplyModal from "./GuestApplyModal";
 
 interface Dept {
   id: number;
@@ -66,14 +53,6 @@ export default function JobApply() {
   const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [depts, setDepts] = useState<Dept[]>([]);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
-  const [appliedJobIds, setAppliedJobIds] = useState<number[]>([]);
-
-  // Guest modal state
-  const [guestModalOpen, setGuestModalOpen] = useState(false);
-  const [guestJobId, setGuestJobId] = useState<number | null>(null);
-  const [guestJobTitle, setGuestJobTitle] = useState<string>("");
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,7 +68,6 @@ export default function JobApply() {
   useEffect(() => {
     fetchJobs();
     fetchDepts();
-    fetchAppliedJobs();
   }, []);
 
   const fetchJobs = async () => {
@@ -107,67 +85,6 @@ export default function JobApply() {
       setDepts(res.data);
     } catch (error) {
       console.error("Error fetching depts:", error);
-    }
-  };
-
-  const fetchAppliedJobs = async () => {
-    try {
-      const loginId = getUserId();
-      if (!loginId) return;
-      const profileRes = await api.get(`/profile/${loginId}`);
-      if (!profileRes.data?.id) return;
-      const candidateId = profileRes.data.id;
-      const applRes = await api.get(`/getappcan/${candidateId}`);
-      const ids = applRes.data.map((app: any) => app.job?.id).filter(Boolean);
-      setAppliedJobIds(ids);
-    } catch {
-      // not logged in or no profile yet — silently ignore
-    }
-  };
-
-  // ── Apply click handler (guest-aware) ──────────────────────────────────────
-  const handleApplyClick = async (jobId: number, jobTitle: string) => {
-    const loginId = getUserId();
-
-    // Guest flow — open multi-slide modal
-    if (!loginId) {
-      setGuestJobId(jobId);
-      setGuestJobTitle(jobTitle);
-      setGuestModalOpen(true);
-      return;
-    }
-
-    // Logged-in flow — existing confirm dialog
-    try {
-      const profileRes = await api.get(`/profile/${loginId}`);
-      if (!profileRes.data || !profileRes.data.id) {
-        toast.error("Please fill your profile first");
-        return;
-      }
-      setSelectedJobId(jobId);
-      setConfirmOpen(true);
-    } catch {
-      toast.error("Please fill your profile first");
-      setTimeout(() => {
-        navigate("/profile");
-      }, 1500);
-    }
-  };
-
-  const confirmApply = async () => {
-    try {
-      if (!selectedJobId) return;
-      const loginId = getUserId();
-      const profileRes = await api.get(`/profile/${loginId}`);
-      const candidateId = profileRes.data.id;
-      await api.post("/createappl", { candidateId, jobId: selectedJobId });
-      toast.success("Applied Successfully");
-      setAppliedJobIds((prev) => [...prev, selectedJobId]);
-      setConfirmOpen(false);
-      setSelectedJobId(null);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to apply");
     }
   };
 
@@ -213,7 +130,10 @@ export default function JobApply() {
     if (selectedDeptIds.length > 0 && (!job.dept || !selectedDeptIds.includes(job.dept.id)))
       return false;
 
-    if (selectedEmpTypes.length > 0 && (!job.employmentType || !selectedEmpTypes.includes(job.employmentType.name)))
+    if (
+      selectedEmpTypes.length > 0 &&
+      (!job.employmentType || !selectedEmpTypes.includes(job.employmentType.name))
+    )
       return false;
 
     const minExp = job.minExperience ?? 0;
@@ -239,10 +159,6 @@ export default function JobApply() {
       {children}
     </Typography>
   );
-
-  // ── Changed from component declarations to plain functions called inline ──
-  // This prevents React from treating them as new component types on each render,
-  // which was causing focus loss (remount) on every keystroke / slider change.
 
   const filterPanelContent = () => (
     <Box sx={{ px: 2.5, py: 2.5 }}>
@@ -503,11 +419,23 @@ export default function JobApply() {
           <Typography
             variant="h4"
             fontWeight={700}
-            sx={{ color: PRIMARY, mb: 0.5, fontSize: { xs: "1.5rem", sm: "2rem", md: "2.125rem" } }}
+            sx={{
+              color: PRIMARY,
+              mb: 0.5,
+              fontSize: { xs: "1.5rem", sm: "2rem", md: "2.125rem" },
+            }}
           >
             Open Positions
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 1,
+            }}
+          >
             <Typography variant="body2" sx={{ color: "#64748b" }}>
               {filteredJobs.length} job{filteredJobs.length !== 1 ? "s" : ""} available
             </Typography>
@@ -533,14 +461,21 @@ export default function JobApply() {
                   }),
                 }}
               >
-                Filters{hasActiveFilters ? ` (${selectedDeptIds.length + selectedEmpTypes.length + (expRange[0] !== 0 || expRange[1] !== 20 ? 1 : 0) + (searchQuery ? 1 : 0)})` : ""}
+                Filters
+                {hasActiveFilters
+                  ? ` (${
+                      selectedDeptIds.length +
+                      selectedEmpTypes.length +
+                      (expRange[0] !== 0 || expRange[1] !== 20 ? 1 : 0) +
+                      (searchQuery ? 1 : 0)
+                    })`
+                  : ""}
               </Button>
             )}
           </Box>
         </Box>
 
         <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
-
           {/* ── LEFT SIDEBAR FILTER (desktop only) ── */}
           {!isMobile && (
             <Box
@@ -646,8 +581,8 @@ export default function JobApply() {
                   "&:hover": { boxShadow: "0 4px 20px rgba(26,46,90,0.10)" },
                 }}
               >
-                {/* Card Header */}
-                <Box sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: 2 }}>
+                {/* Card */}
+                <Box sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -668,13 +603,19 @@ export default function JobApply() {
                           flexShrink: 0,
                         }}
                       >
-                        <BusinessCenterOutlinedIcon sx={{ color: PRIMARY, fontSize: { xs: 20, sm: 26 } }} />
+                        <BusinessCenterOutlinedIcon
+                          sx={{ color: PRIMARY, fontSize: { xs: 20, sm: 26 } }}
+                        />
                       </Avatar>
                       <Box>
                         <Typography
                           variant="h6"
                           fontWeight={700}
-                          sx={{ color: PRIMARY, lineHeight: 1.3, fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                          sx={{
+                            color: PRIMARY,
+                            lineHeight: 1.3,
+                            fontSize: { xs: "1rem", sm: "1.25rem" },
+                          }}
                         >
                           {job.title}
                         </Typography>
@@ -686,40 +627,38 @@ export default function JobApply() {
                       </Box>
                     </Stack>
 
-                    {(() => {
-                      const isApplied = appliedJobIds.includes(job.id);
-                      return (
-                        <Button
-                          variant="contained"
-                          onClick={() => !isApplied && handleApplyClick(job.id, job.title)}
-                          disabled={isApplied}
-                          sx={{
-                            fontWeight: 600,
-                            borderRadius: 2,
-                            bgcolor: isApplied ? "#e2e8f0" : ORANGE,
-                            color: isApplied ? "#94a3b8" : "#fff",
-                            px: { xs: 2, sm: 3 },
-                            py: { xs: 0.8, sm: 1 },
-                            textTransform: "none",
-                            flexShrink: 0,
-                            boxShadow: "none",
-                            fontSize: { xs: 13, sm: 14 },
-                            alignSelf: { xs: "flex-start", sm: "center" },
-                            "&:hover": { bgcolor: isApplied ? "#e2e8f0" : "#ea6c0a", boxShadow: "none" },
-                            "&.Mui-disabled": { bgcolor: "#e2e8f0", color: "#94a3b8" },
-                          }}
-                        >
-                          {isApplied ? "Applied" : "Apply"}
-                        </Button>
-                      );
-                    })()}
+                    {/* Apply button — navigates to job detail page */}
+                    <Button
+                      variant="contained"
+                      onClick={() => navigate(`/jobs/${job.id}`)}
+                      sx={{
+                        fontWeight: 600,
+                        borderRadius: 2,
+                        bgcolor: ORANGE,
+                        color: "#fff",
+                        px: { xs: 2, sm: 3 },
+                        py: { xs: 0.8, sm: 1 },
+                        textTransform: "none",
+                        flexShrink: 0,
+                        boxShadow: "none",
+                        fontSize: { xs: 13, sm: 14 },
+                        alignSelf: { xs: "flex-start", sm: "center" },
+                        "&:hover": { bgcolor: "#ea6c0a", boxShadow: "none" },
+                      }}
+                    >
+                      View
+                    </Button>
                   </Box>
 
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap mt={2}>
-                    {job.minExperience !== undefined && job.maxExperience !== undefined && (
+                    {(job.minExperience != null || job.maxExperience != null) && (
                       <Chip
-                        icon={<WorkOutlineIcon sx={{ fontSize: 14, color: PRIMARY + " !important" }} />}
-                        label={`${job.minExperience} – ${job.maxExperience} yrs exp`}
+                        icon={
+                          <WorkOutlineIcon
+                            sx={{ fontSize: 14, color: PRIMARY + " !important" }}
+                          />
+                        }
+                        label={`${job.minExperience ?? 0} – ${job.maxExperience ?? 0} yrs exp`}
                         size="small"
                         sx={{
                           bgcolor: PRIMARY_LIGHT,
@@ -745,160 +684,11 @@ export default function JobApply() {
                     )}
                   </Stack>
                 </Box>
-
-                {/* Accordion */}
-                <Accordion
-                  disableGutters
-                  elevation={0}
-                  sx={{
-                    bgcolor: "transparent",
-                    "&:before": { display: "none" },
-                    borderTop: "1px solid #f1f5f9",
-                  }}
-                >
-                  <AccordionSummary
-                    expandIcon={<ExpandMoreIcon sx={{ color: ORANGE }} />}
-                    sx={{
-                      px: { xs: 2, sm: 3 },
-                      minHeight: 44,
-                      "&.Mui-expanded": { minHeight: 44 },
-                      "& .MuiAccordionSummary-content": { my: 1 },
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ color: PRIMARY, fontWeight: 600 }}>
-                      View Details
-                    </Typography>
-                  </AccordionSummary>
-
-                  <AccordionDetails sx={{ px: { xs: 2, sm: 3 }, pt: 0, pb: 3, bgcolor: "#fafbfd" }}>
-                    {job.description && (
-                      <Box mb={2.5}>
-                        <Typography variant="body2" fontWeight={700} sx={{ color: PRIMARY, mb: 0.5 }}>
-                          Job Description
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: "#64748b", lineHeight: 1.7 }}>
-                          {job.description}
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {job.skillsRequired && (
-                      <Box mb={2.5}>
-                        <Stack direction="row" alignItems="center" spacing={0.5} mb={0.5}>
-                          <StarOutlineIcon sx={{ fontSize: 16, color: ORANGE }} />
-                          <Typography variant="body2" fontWeight={700} sx={{ color: PRIMARY }}>
-                            Skills Required
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" flexWrap="wrap" gap={0.8} mt={0.5}>
-                          {job.skillsRequired.split(",").map((skill, i) => (
-                            <Chip
-                              key={i}
-                              label={skill.trim()}
-                              size="small"
-                              sx={{
-                                bgcolor: "#fff",
-                                border: "1px solid #e2e8f0",
-                                color: "#475569",
-                                fontWeight: 500,
-                                fontSize: 12,
-                                borderRadius: 2,
-                              }}
-                            />
-                          ))}
-                        </Stack>
-                      </Box>
-                    )}
-
-                    {job.educationRequired && (
-                      <Box>
-                        <Stack direction="row" alignItems="center" spacing={0.5} mb={0.5}>
-                          <SchoolOutlinedIcon sx={{ fontSize: 16, color: PRIMARY }} />
-                          <Typography variant="body2" fontWeight={700} sx={{ color: PRIMARY }}>
-                            Education Required
-                          </Typography>
-                        </Stack>
-                        <Typography variant="body2" sx={{ color: "#64748b", lineHeight: 1.7 }}>
-                          {job.educationRequired}
-                        </Typography>
-                      </Box>
-                    )}
-                  </AccordionDetails>
-                </Accordion>
               </Box>
             ))}
           </Box>
         </Box>
       </Container>
-
-      {/* ── Logged-in Confirm Dialog ── */}
-      <Dialog
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        fullWidth
-        maxWidth="xs"
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 8px 32px rgba(26,46,90,0.12)",
-            mx: { xs: 2, sm: "auto" },
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, color: PRIMARY, borderBottom: "1px solid #e2e8f0", pb: 2 }}>
-          Confirm Application
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2.5 }}>
-          <DialogContentText sx={{ color: "#64748b", lineHeight: 1.7 }}>
-            Are you sure you want to apply for this job?
-            <br /><br />
-            Please make sure your profile information and resume are updated before applying.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, flexWrap: { xs: "wrap", sm: "nowrap" } }}>
-          <Button
-            onClick={() => setConfirmOpen(false)}
-            sx={{
-              textTransform: "none",
-              color: "#64748b",
-              borderRadius: 2,
-              border: "1px solid #e2e8f0",
-              px: 2.5,
-              "&:hover": { bgcolor: "#f8f9fc" },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={confirmApply}
-            sx={{
-              textTransform: "none",
-              fontWeight: 600,
-              bgcolor: ORANGE,
-              borderRadius: 2,
-              px: 3,
-              boxShadow: "none",
-              "&:hover": { bgcolor: "#ea6c0a", boxShadow: "none" },
-            }}
-          >
-            Yes, Apply
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ── Guest Apply Modal ── */}
-      <GuestApplyModal
-        open={guestModalOpen}
-        onClose={() => setGuestModalOpen(false)}
-        jobId={guestJobId}
-        jobTitle={guestJobTitle}
-        onSuccess={() => {
-          if (guestJobId) setAppliedJobIds((prev) => [...prev, guestJobId]);
-          setGuestModalOpen(false);
-        }}
-      />
     </Box>
   );
 }

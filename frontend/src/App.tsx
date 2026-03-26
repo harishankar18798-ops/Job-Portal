@@ -14,7 +14,9 @@ import CreateJob from "./pages/createjob";
 import Dashboard from "./pages/dashboard";
 import EmploymentTypeTable from "./pages/employmentType";
 import ProtectedRoute from "./pages/ProtectedRoute";
+import MyApplications from "./pages/MyApplications";
 import { startTokenRefreshTimer } from "./utils/tokenTimer";
+import JobDetail from "./pages/jobDetail";
 import { useEffect } from "react";
 
 function App() {
@@ -37,10 +39,12 @@ function App() {
         <Route path="/jobapply" element={<JobApply />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<HomePage />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
 
           {/* User only */}
           <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
             <Route path="/profile" element={<CandidateForm />} />
+            <Route path="/myapplications" element={<MyApplications />} />
           </Route>
 
           {/* Admin only */}
